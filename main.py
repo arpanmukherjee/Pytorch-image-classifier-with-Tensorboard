@@ -3,10 +3,11 @@ import torch
 import warnings
 import argparse
 import torchvision
+from model import Net
 from torchvision import transforms
 from torch.autograd import Variable
 from torch.utils.data import DataLoader
-from model import Autoencoder, ConvolutionAE
+from torch.utils.tensorboard import SummaryWriter
 
 
 def main():
@@ -27,8 +28,6 @@ def main():
         '--dataset', help='Dataset name. Must be one of MNIST, STL10, CIFAR10')
     parser.add_argument(
         '--use-cuda', help='CUDA usage (default: False)', type=bool, default=False)
-    parser.add_argument(
-        '--network-type', help='Type of the network layers. Must be one of Conv, FC (default: FC)', default='FC')
     parser.add_argument(
         '--weight-decay', help='weight decay (L2 penalty) (default: 1e-5)', type=float, default=1e-5)
     parser.add_argument(
@@ -62,10 +61,6 @@ def main():
             data_path, train=True, download=True, transform=T)
         test_data = torchvision.datasets.MNIST(
             data_path, train=False, download=True, transform=T)
-
-        ip_dim = 1 * 28 * 28  # input dimension
-        h1_dim = int(ip_dim / 2)  # hidden layer 1 dimension
-        op_dim = int(ip_dim / 4)  # output dimension
     elif args.dataset == 'STL10':
         T = transforms.Compose([
             transforms.ToTensor(),
@@ -76,10 +71,6 @@ def main():
             data_path, split='train', download=True, transform=T)
         test_data = torchvision.datasets.STL10(
             data_path, split='test', download=True, transform=T)
-
-        ip_dim = 3 * 96 * 96  # input dimension
-        h1_dim = int(ip_dim / 2)  # hidden layer 1 dimension
-        op_dim = int(ip_dim / 4)  # output dimension
     elif args.dataset == 'CIFAR10':
         T = transforms.Compose([
             transforms.ToTensor(),
@@ -90,10 +81,6 @@ def main():
             data_path, train=True, download=True, transform=T)
         test_data = torchvision.datasets.CIFAR10(
             data_path, train=False, download=True, transform=T)
-
-        ip_dim = 3 * 32 * 32  # input dimension
-        h1_dim = int(ip_dim / 2)  # hidden layer 1 dimension
-        op_dim = int(ip_dim / 4)  # output dimension
     elif args.dataset is None:
         raise ValueError('Must provide dataset')
     else:
@@ -116,63 +103,37 @@ def main():
         else:
             raise ValueError('CUDA is not available, please set it False')
 
-    # Type of layer
-    if args.network_type == 'FC':
-        auto_encoder = Autoencoder(ip_dim, h1_dim, op_dim).to(device)
-    elif args.network_type == 'Conv':
-        auto_encoder = ConvolutionAE().to(device)
-    else:
-        raise ValueError('Network type must be either FC or Conv type')
+    # Create the model
+    model = Net(dataset=args.dataset).to(device)
 
-    # Train the model
-    auto_encoder.train()
+    # Train the network
+    model.train()
     criterion = torch.nn.MSELoss()
     optimizer = torch.optim.Adam(
-        lr=learning_rate, params=auto_encoder.parameters(), weight_decay=args.weight_decay)
+        lr=learning_rate, params=model.parameters(), weight_decay=args.weight_decay)
 
-    for n_epoch in range(epochs):  # loop over the dataset multiple times
-        reconstruction_loss = 0.0
-        for batch_idx, (X, Y) in enumerate(train_loader):
-            X = X.view(X.size()[0], -1)
+    for n_epoch in range(epochs):
+        train_loss = 0.0
+        for batch_idx, (X, y_true) in enumerate(train_loader):
             X = Variable(X).to(device)
+            y_true = y_true.to(device)
 
-            encoded, decoded = auto_encoder(X)
+            y_pred = model(X)
+            loss = criterion(y_true, y_pred)
 
             optimizer.zero_grad()
-            loss = criterion(X, decoded)
             loss.backward()
             optimizer.step()
 
-            reconstruction_loss += loss.item()
-            if (batch_idx + 1) % args.log_interval == 0:
+            # print loss
+            train_loss += loss.item()
+            if batch_idx % args.log_interval == 0:
                 print('[%d, %5d] Reconstruction loss: %.5f' %
-                      (n_epoch + 1, batch_idx + 1, reconstruction_loss / args.log_interval))
-            reconstruction_loss = 0.0
-    if args.save_model:
-        torch.save(auto_encoder.state_dict(), "Autoencoder.pth")
+                      (n_epoch + 1, batch_idx + 1, train_loss / args.log_interval))
+                train_loss = 0.0
+        print('Finished Training')
 
-    # Save real images
-    data_iter = iter(test_loader)
-    images, labels = data_iter.next()
-    torchvision.utils.save_image(torchvision.utils.make_grid(
-        images, nrow=4), 'images/actual_img.jpeg')
-
-    # Load trained model and get decoded images
-    auto_encoder.load_state_dict(torch.load('Autoencoder.pth'))
-    auto_encoder.eval()
-    images = images.view(images.size()[0], -1)
-    images = Variable(images).to(device)
-    encoded, decoded = auto_encoder(images)
-
-    # Save decoded images
-    if args.dataset == 'MNIST':
-        decoded = decoded.view(decoded.size()[0], 1, 28, 28)
-    elif args.dataset == 'STL10':
-        decoded = decoded.view(decoded.size()[0], 3, 96, 96)
-    elif args.dataset == 'CIFAR10':
-        decoded = decoded.view(decoded.size()[0], 3, 32, 32)
-    torchvision.utils.save_image(torchvision.utils.make_grid(
-        decoded, nrow=4), 'images/decoded_img.jpeg')
+    # Test the network
 
 
 if __name__ == '__main__':
