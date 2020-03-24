@@ -5,9 +5,61 @@ import argparse
 import torchvision
 from model import Net
 from torchvision import transforms
-from torch.autograd import Variable
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
+
+
+def get_correct(y_pred, y_true):
+    return y_pred.argmax(dim=1).eq(y_true).sum().item()
+
+
+def train(args, model, device, train_loader, optimizer, criterion):
+    model.train()
+
+    img, lbl = next(iter(train_loader))
+    grid = torchvision.utils.make_grid(img)
+
+    tboard = SummaryWriter()
+    tboard.add_image('images', grid)
+    tboard.add_graph(model, img)
+
+    for n_epoch in range(args.epochs):
+        train_loss = 0.0
+
+        total_loss = 0.0
+        n_correct = 0
+        for batch_idx, (X, y_true) in enumerate(train_loader):
+            y_pred = model(X)
+
+            loss = criterion(y_pred, y_true)  # Calculate loss
+            optimizer.zero_grad()  # Zero parameter gradients
+            loss.backward()  # Calculate gradients
+            optimizer.step()  # Update weights
+
+            # print loss
+            train_loss += loss.item()
+            total_loss += loss.item()
+            n_correct += get_correct(y_pred, y_true)
+            if batch_idx % args.log_interval == 0:
+                print('[%d, %5d] Total loss: %.5f' %
+                      (n_epoch + 1, batch_idx + 1, train_loss / args.log_interval))
+                train_loss = 0.0
+
+        tboard.add_scalar('Loss', total_loss, n_epoch)
+        tboard.add_scalar('Accuracy', n_correct /
+                          len(train_loader.dataset), n_epoch)
+
+        tboard.add_histogram('Conv1.bias', model.conv1.bias, n_epoch)
+        tboard.add_histogram('Conv1.weight', model.conv1.weight, n_epoch)
+        tboard.add_histogram('Conv1.weight.grad',
+                             model.conv1.weight.grad, n_epoch)
+    print('Finished Training')
+    if args.save_model:
+        torch.save(model.state_dict(), 'CNNModel_', args.dataset, '.pth')
+
+
+def test(args, model, device, test_loader):
+    return 0
 
 
 def main():
@@ -37,7 +89,6 @@ def main():
 
     args = parser.parse_args()
 
-    epochs = args.epochs  # number of epochs
     batch_size = args.batch_size  # batch size
     learning_rate = args.learning_rate  # learning rate
     torch.manual_seed(args.seed)  # seed value
@@ -107,31 +158,10 @@ def main():
     model = Net(dataset=args.dataset).to(device)
 
     # Train the network
-    model.train()
-    criterion = torch.nn.MSELoss()
-    optimizer = torch.optim.Adam(
+    criterion = torch.nn.CrossEntropyLoss()
+    optimizer = torch.optim.SGD(
         lr=learning_rate, params=model.parameters(), weight_decay=args.weight_decay)
-
-    for n_epoch in range(epochs):
-        train_loss = 0.0
-        for batch_idx, (X, y_true) in enumerate(train_loader):
-            X = Variable(X).to(device)
-            y_true = y_true.to(device)
-
-            y_pred = model(X)
-            loss = criterion(y_true, y_pred)
-
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-
-            # print loss
-            train_loss += loss.item()
-            if batch_idx % args.log_interval == 0:
-                print('[%d, %5d] Reconstruction loss: %.5f' %
-                      (n_epoch + 1, batch_idx + 1, train_loss / args.log_interval))
-                train_loss = 0.0
-        print('Finished Training')
+    train(args, model, device, train_loader, optimizer, criterion)
 
     # Test the network
 

@@ -7,21 +7,23 @@ class Net(nn.Module):
         super(Net, self).__init__()
         if dataset == 'MNIST':
             self.conv1 = nn.Conv2d(1, 32, 3, 1)
-            self.pool = nn.MaxPool2d(2, 2)
+            self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
             self.conv2 = nn.Conv2d(32, 64, 3, 1)
             self.fc1 = nn.Linear(64 * 5 * 5, 1024)
             self.fc2 = nn.Linear(1024, 256)
             self.fc3 = nn.Linear(256, 10)
         elif dataset == 'STL10':
-            self.conv1 = nn.Conv2d(3, 6, 5)
-            self.pool = nn.MaxPool2d(2, 2)
-            self.conv2 = nn.Conv2d(6, 15, 5)
+            self.conv1 = nn.Conv2d(
+                in_channels=3, out_channels=6, kernel_size=5)
+            self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
+            self.conv2 = nn.Conv2d(
+                in_channels=6, out_channels=15, kernel_size=5)
             self.fc1 = nn.Linear(15 * 21 * 21, 1024)
             self.fc2 = nn.Linear(1024, 256)
             self.fc2 = nn.Linear(256, 10)
         elif dataset == 'CIFAR10':
             self.conv1 = nn.Conv2d(3, 6, 5)
-            self.pool = nn.MaxPool2d(2, 2)
+            self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
             self.conv2 = nn.Conv2d(6, 16, 5)
             self.fc1 = nn.Linear(16 * 5 * 5, 120)
             self.fc2 = nn.Linear(120, 84)
