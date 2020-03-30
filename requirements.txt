@@ -1,0 +1,6 @@
+torch
+numpy
+pickle
+torchvision
+matplotlib
+tensorflow
