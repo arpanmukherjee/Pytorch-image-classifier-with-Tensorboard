@@ -13,21 +13,20 @@ def get_correct(y_pred, y_true):
     return y_pred.argmax(dim=1).eq(y_true).sum().item()
 
 
-def train(args, model, device, train_loader, optimizer, criterion):
+def train(args, model, train_loader, optimizer, criterion):
     model.train()
 
-    img, lbl = next(iter(train_loader))
-    grid = torchvision.utils.make_grid(img)
+    img, lbl = iter(train_loader).next()
+    img_grid = torchvision.utils.make_grid(img)
 
     tboard = SummaryWriter()
-    tboard.add_image('images', grid)
-    tboard.add_graph(model, img)
+    tboard.add_image('images', img_grid)
 
     for n_epoch in range(args.epochs):
-        train_loss = 0.0
-
+        batch_loss = 0.0
         total_loss = 0.0
-        n_correct = 0
+        batch_correct = 0
+        total_correct = 0
         for batch_idx, (X, y_true) in enumerate(train_loader):
             y_pred = model(X)
 
@@ -37,29 +36,44 @@ def train(args, model, device, train_loader, optimizer, criterion):
             optimizer.step()  # Update weights
 
             # print loss
-            train_loss += loss.item()
+            batch_loss += loss.item()
             total_loss += loss.item()
-            n_correct += get_correct(y_pred, y_true)
+            batch_correct += get_correct(y_pred, y_true)
+            total_correct += get_correct(y_pred, y_true)
             if batch_idx % args.log_interval == 0:
-                print('[%d, %5d] Total loss: %.5f' %
-                      (n_epoch + 1, batch_idx + 1, train_loss / args.log_interval))
-                train_loss = 0.0
+                print('[%d, %5d] Total loss: %.5f, Total Correct: %5d' %
+                      (n_epoch + 1, batch_idx + 1, batch_loss / args.log_interval, batch_correct))
+                batch_loss = 0.0
+                batch_correct = 0
 
         tboard.add_scalar('Loss', total_loss, n_epoch)
-        tboard.add_scalar('Accuracy', n_correct /
+        tboard.add_scalar('Accuracy', total_correct /
                           len(train_loader.dataset), n_epoch)
 
         tboard.add_histogram('Conv1.bias', model.conv1.bias, n_epoch)
         tboard.add_histogram('Conv1.weight', model.conv1.weight, n_epoch)
         tboard.add_histogram('Conv1.weight.grad',
                              model.conv1.weight.grad, n_epoch)
+
+    tboard.add_graph(model, img)
+    tboard.close()
     print('Finished Training')
     if args.save_model:
-        torch.save(model.state_dict(), 'CNNModel_', args.dataset, '.pth')
+        torch.save(model.state_dict(),
+                   ('CNNModel_' + args.dataset + '.pth'))
 
 
-def test(args, model, device, test_loader):
-    return 0
+def test(model, test_loader):
+    model.eval()
+    correct = 0
+    total = 0
+    with torch.no_grad():
+        for batch_idx, (X, y_true) in enumerate(test_loader):
+            y_pred = model(X)
+            total += y_true.size(0)
+            correct += get_correct(y_pred, y_true)
+        print('Accuracy of the network on test images: %d %%' % (
+            100 * correct / total))
 
 
 def main():
@@ -164,6 +178,7 @@ def main():
     train(args, model, device, train_loader, optimizer, criterion)
 
     # Test the network
+    test(model, test_loader)
 
 
 if __name__ == '__main__':
