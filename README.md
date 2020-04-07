@@ -8,7 +8,9 @@
 - [Results](#results)
 
 ## About
+This repo contains tutorials covering how to do sentiment analysis using [PyTorch](https://github.com/pytorch/pytorch), [TorchVision](https://github.com/pytorch/vision) and [TensorBoard](https://github.com/tensorflow/tensorboard) using Python 3.7.
 
+**If you find any mistakes or disagree with any of the explanations, please do not hesitate to [submit an issue](https://github.com/arpanmukherjee/Pytorch-image-classifier-with-Tensorboard/issues/new). I welcome any feedback, positive or negative!**
 
 ## Setup
 ### Installation
@@ -41,6 +43,6 @@ The network can be trained using `main.py` script. Currently, it only accepts th
 
 Arguments that have no default value, you must provide value to run the script.
 ```bash
-python main.py --dataset STL10 --use-cuda True --network-type FC
+python main.py --dataset STL10 --use-cuda True
 ```
 If you think the model is taking too much time, you can consider using GPU. Set `use_cuda` argument as `True`.
