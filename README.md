@@ -1,14 +1,15 @@
 # Pytorch Image Classification with Tensorboard
 
 ## Quick Links
-- [About](#about)
-- [Setup](#setup)
-	- [Installation](#installation)
-	- [Training](#training)
-- [Results](#results)
+- [Pytorch Image Classification with Tensorboard](#pytorch-image-classification-with-tensorboard)
+	- [Quick Links](#quick-links)
+	- [About](#about)
+	- [Setup](#setup)
+		- [Installation](#installation)
+		- [Training](#training)
 
 ## About
-This repo contains tutorials covering how to do sentiment analysis using [PyTorch](https://github.com/pytorch/pytorch), [TorchVision](https://github.com/pytorch/vision) and [TensorBoard](https://github.com/tensorflow/tensorboard) using Python 3.7.
+This repo contains tutorials covering how to do image classification using [PyTorch](https://github.com/pytorch/pytorch), [TorchVision](https://github.com/pytorch/vision) and [TensorBoard](https://github.com/tensorflow/tensorboard) using Python 3.7.
 
 **If you find any mistakes or disagree with any of the explanations, please do not hesitate to [submit an issue](https://github.com/arpanmukherjee/Pytorch-image-classifier-with-Tensorboard/issues/new). I welcome any feedback, positive or negative!**
 
